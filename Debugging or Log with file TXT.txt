@@ -1,0 +1,34 @@
+appendLog("testes");
+
+public void appendLog(String text){
+        File makeFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + getApplicationContext().getString(R.string.app_name));
+        if (!makeFolder.exists()) {
+            makeFolder.mkdirs();
+        }
+
+        File logFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + getApplicationContext().getString(R.string.app_name), "tesLog.txt");
+
+        if (!logFile.exists())  {
+            try  {
+                Log.d("File created ", "File created ");
+                logFile.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+
+        try {
+            //BufferedWriter for performance, true to set append to file flag
+            BufferedWriter buf = new BufferedWriter(new FileWriter(logFile, true));
+
+            buf.write(text + "\r\n");
+            //buf.append(message);
+            buf.newLine();
+            buf.flush();
+            buf.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+}
