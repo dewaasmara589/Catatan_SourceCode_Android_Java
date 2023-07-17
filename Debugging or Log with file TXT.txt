@@ -1,4 +1,9 @@
-appendLog("testes");
+appendLog("LEVEL: I    TIME: "+java.util.GregorianCalendar.DAY_OF_MONTH +
+                        "-"+ java.util.GregorianCalendar.MONTH +" "+GregorianCalendar.HOUR_OF_DAY +":"+GregorianCalendar.MINUTE +
+                        ":"+GregorianCalendar.SECOND +"."+GregorianCalendar.MILLISECOND + "    PID: "+
+                        android.os.Process.myPid()+ "    TID: "+android.os.Process.myTid()+ "    Application: com.example.myapplication"+
+                        "    TAG:" +TAG+ "    TEXT: An INFO Message");
+
 
 public void appendLog(String text){
         File makeFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + getApplicationContext().getString(R.string.app_name));
