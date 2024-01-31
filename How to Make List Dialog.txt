@@ -1,0 +1,75 @@
+private List<String> listTags = new ArrayList<>();
+
+listTags.add("All");
+
+tvListRack = (TextView) findViewById(R.id.tvListRack);
+
+tvListRack.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Dialog dialog = new Dialog(DetailDailyPerformance.this);
+                LayoutInflater inflater = LayoutInflater.from(DetailDailyPerformance.this);
+                View view1 = inflater.inflate(R.layout.custom_dialog_rack, null);
+                ListView listView = view1.findViewById(R.id.listView);
+                androidx.appcompat.widget.SearchView searchView = view1.findViewById(R.id.searchView);
+                searchView.setQueryHint("Search Rack");
+                searchView.setIconified(false);
+                searchView.setIconifiedByDefault(false);
+                searchView.clearFocus();
+
+                final ArrayAdapter<String> stringArrayAdapter = new ArrayAdapter<String>(
+                        DetailDailyPerformance.this,
+                        android.R.layout.simple_list_item_1,
+                        listTags.toArray(new String[listTags.size()])
+                );
+                listView.setAdapter(stringArrayAdapter);
+
+                searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                    @Override
+                    public boolean onQueryTextSubmit(String query) {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean onQueryTextChange(String newText) {
+                        stringArrayAdapter.getFilter().filter(newText);
+                        return false;
+                    }
+                });
+
+                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        String selected = stringArrayAdapter.getItem(position);
+                        tvListRack.setText(selected);
+
+                        dialog.dismiss();
+                    }
+                });
+
+                dialog.setContentView(view1);
+                dialog.show();
+            }
+        });
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <androidx.appcompat.widget.SearchView
+        android:id="@+id/searchView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:iconifiedByDefault="false" />
+
+    <ListView
+        android:id="@+id/listView"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
+
+</LinearLayout>
