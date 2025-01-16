@@ -1,0 +1,171 @@
+    private Map<String, Integer> getListHeader(File file) throws IOException {
+        Map<String, Integer> csvMapHeader = new HashMap<>();
+
+        CSVReader reader = new CSVReader(new FileReader(file));
+
+        try {
+            // Get Header
+            String[] getHeader = reader.readNext();
+
+            int i = 0;
+            for (String line : getHeader) {
+                if (i == 0) {
+                    String[] headLine = line.split("[|]");
+                    for (int j = 0; j < headLine.length; j++) {
+                        if (headLine[j].equals("group")){
+                            csvMapHeader.put("[group]", j);
+                        }else if (headLine[j].equals("limit")){
+                            csvMapHeader.put("[limit]", j);
+                        }else {
+                            csvMapHeader.put(headLine[j], j);
+                        }
+                    }
+                    i++;
+                    continue;
+                }
+            }
+        } catch (Exception e){
+            e.printStackTrace();
+        } finally {
+            reader.close();
+        }
+
+        Log.d(tag, "MAP : " + csvMapHeader);
+        Log.d(tag, "Map Size : " + String.valueOf(csvMapHeader.size()));
+
+        return csvMapHeader;
+    }
+
+    private List<String> getColumnName(SQLiteDatabase db, String tableName){
+        List<String> columnNames = new ArrayList<>();
+        Cursor cursor = null;
+
+        try {
+            cursor = db.rawQuery("PRAGMA table_info(" + tableName + ")", null);
+            if (cursor != null) {
+                int nameIndex = cursor.getColumnIndex("name");
+                while (cursor.moveToNext()) {
+                    String columnName = cursor.getString(nameIndex);
+                    columnNames.add(columnName);
+                }
+            }
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        return columnNames;
+    }
+
+    private void checkHeaderCSVWithHeaderDB(CSVReader reader, SQLiteDatabase dbRead, String tableName) throws CsvValidationException, IOException {
+        List<String> listHeaderCSV = new ArrayList<>();
+        String[] getHeader = reader.readNext();
+
+        for (String line : getHeader) {
+            String[] headLine = line.split("[|]");
+            listHeaderCSV = Arrays.asList(headLine);
+        }
+
+        List<String> listHeaderDb = getColumnName(dbRead, tableName);
+
+        List<String> differentValue = new ArrayList<>();
+        for (String value : listHeaderCSV) {
+            if (!listHeaderDb.contains(value)) {
+                if (value.equals("group")){
+                    differentValue.add("[group]");
+                }else if (value.equals("limit")){
+                    differentValue.add("[limit]");
+                }else {
+                    differentValue.add(value);
+                }
+            }
+        }
+        Log.d(tag, "List DB dan CSV Beda : " + differentValue.toString());
+
+        if (!differentValue.isEmpty()){
+            StringBuilder sb = new StringBuilder("ALTER TABLE " + tableName + " ADD COLUMN ");
+            for (int x = 0; x<differentValue.size(); x++){
+                if (x == differentValue.size()-1){
+                    sb.append(differentValue.get(x) + " TEXT");
+                }else {
+                    sb.append(differentValue.get(x) + " TEXT, ");
+                }
+            }
+            String alterTableSQL = sb.toString();
+
+            Log.d(tag, "Query : " + alterTableSQL);
+
+            SQLiteStatement stmt = dbRead.compileStatement(alterTableSQL);
+
+            try {
+                stmt.execute();
+                Log.d(tag, "Column added Successfully in " + tableName);
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.d(tag, "Failed to alter table: " + e.getMessage());
+            } finally {
+                stmt.close();
+            }
+        }
+    }
+
+    private void insertCSV(String fileName, String tableName) throws IOException {
+        runOnUiThread(() -> showLoading("Load " + tableName));
+        SQLiteDatabase dba = db.getWritableDatabase();
+        SQLiteDatabase dbRead = db.getReadableDatabase();
+        File csvFile = new File(Environment.getExternalStorageDirectory()+"/Download/data_loader/outputfile", fileName);
+        CSVReader reader = new CSVReader(new FileReader(csvFile));
+        String[] nextLine;
+        try {
+            checkHeaderCSVWithHeaderDB(reader, dbRead, tableName);
+
+            Map<String, Integer> headerCSV = getListHeader(csvFile);
+
+            StringBuilder stringBuilder = new StringBuilder("INSERT INTO " + tableName  + " (");
+            Object[] entries = headerCSV.keySet().toArray();
+            for (int y = 0; y<headerCSV.size(); y++){
+                if (y == headerCSV.size()-1){
+                    stringBuilder.append(entries[y] + ") VALUES (");
+                }else {
+                    stringBuilder.append(entries[y] + ", ");
+                }
+            }
+
+            for (int y = 0; y<headerCSV.size(); y++){
+                if (y == headerCSV.size()-1){
+                    stringBuilder.append("?)");
+                }else {
+                    stringBuilder.append("?, ");
+                }
+            }
+
+            Log.d(tag, "Query Insert : " + stringBuilder.toString());
+
+            SQLiteStatement statement = dba.compileStatement(stringBuilder.toString());
+            dba.beginTransaction();
+            while ((nextLine = reader.readNext()) != null) {
+                String[] value_split = Arrays.toString(nextLine).split("\\|");
+                statement.clearBindings();
+                int index = 1;
+                for (Object key : headerCSV.keySet()) {
+                    int value = headerCSV.get(key);
+                    statement.bindString(index, value_split[value].replace("[", "").replace("]", ""));
+//                    Log.d(tag, "index: "+ index +" Value: " + value_split[value].replace("[", "").replace("]", ""));
+                    index++;
+                }
+                statement.execute();
+            }
+            dba.setTransactionSuccessful();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.e(tag, "Error inserting CSV data " + tableName + " into database", e);
+            runOnUiThread(() -> showMsgOkOnly("error","Error inserting CSV data " + tableName + " into database"));
+            runOnUiThread(this::closeLoadingDialogs);
+        } finally {
+            dba.endTransaction();
+            dba.close();
+            dbRead.close();
+            reader.close();
+            runOnUiThread(this::closeLoadingDialogs);
+        }
+    }
